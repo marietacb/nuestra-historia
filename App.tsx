@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import Sidebar from './components/Sidebar';
 import Dashboard from './views/Dashboard';
 import Memories from './views/Memories';
@@ -14,6 +15,7 @@ import AddMemoryModal from './components/AddMemoryModal';
 import MemoryDetailModal from './components/MemoryDetailModal';
 import { Memory, SharedUser, Category } from './types';
 import { INITIAL_MEMORIES, OUR_ACCOUNT } from './constants';
+import { db } from './firebase';
 
 const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -24,19 +26,45 @@ const App: React.FC = () => {
     return sessionStorage.getItem('is_authenticated') === 'true';
   });
 
-  const [memories, setMemories] = useState<Memory[]>(() => {
-    const saved = localStorage.getItem('love_memories');
-    return saved ? JSON.parse(saved) : INITIAL_MEMORIES;
-  });
+  const [memories, setMemories] = useState<Memory[]>(INITIAL_MEMORIES);
 
   const [userConfig, setUserConfig] = useState<SharedUser>(() => {
     const saved = localStorage.getItem('love_user_config');
     return saved ? JSON.parse(saved) : OUR_ACCOUNT;
   });
 
+  // Cargar recuerdos desde Firestore
   useEffect(() => {
-    localStorage.setItem('love_memories', JSON.stringify(memories));
-  }, [memories]);
+    const loadMemories = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'memories'));
+
+        if (snapshot.empty) {
+          // Sembrar la base de datos con los recuerdos iniciales
+          await Promise.all(
+            INITIAL_MEMORIES.map(memory =>
+              setDoc(doc(collection(db, 'memories'), memory.id), memory)
+            )
+          );
+          setMemories(INITIAL_MEMORIES);
+        } else {
+          const loaded: Memory[] = snapshot.docs.map(docSnap => {
+            const data = docSnap.data() as Memory;
+            return {
+              ...data,
+              id: data.id ?? docSnap.id
+            };
+          });
+          setMemories(loaded);
+        }
+      } catch (error) {
+        // Si falla Firestore, al menos seguimos con los recuerdos iniciales en memoria
+        console.error('Error al cargar recuerdos desde Firestore', error);
+      }
+    };
+
+    void loadMemories();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('love_user_config', JSON.stringify(userConfig));
@@ -49,6 +77,8 @@ const App: React.FC = () => {
 
   const handleAddMemory = (newMemory: Memory) => {
     setMemories(prev => [newMemory, ...prev]);
+    // Guardar en Firestore
+    void setDoc(doc(collection(db, 'memories'), newMemory.id), newMemory);
   };
 
   const handleEditMemory = (updatedMemory: Memory) => {
@@ -57,10 +87,19 @@ const App: React.FC = () => {
       setSelectedMemoryDetail(updatedMemory);
     }
     setEditingMemory(null);
+    // Actualizar en Firestore
+    void setDoc(doc(collection(db, 'memories'), updatedMemory.id), updatedMemory, { merge: true });
   };
 
   const handleToggleFavorite = useCallback((id: string) => {
-    setMemories(prev => prev.map(m => m.id === id ? { ...m, isFavorite: !m.isFavorite } : m));
+    setMemories(prev => {
+      const updated = prev.map(m => m.id === id ? { ...m, isFavorite: !m.isFavorite } : m);
+      const updatedMemory = updated.find(m => m.id === id);
+      if (updatedMemory) {
+        void setDoc(doc(collection(db, 'memories'), updatedMemory.id), updatedMemory, { merge: true });
+      }
+      return updated;
+    });
     setSelectedMemoryDetail(prev => prev && prev.id === id ? { ...prev, isFavorite: !prev.isFavorite } : prev);
   }, []);
 
@@ -68,6 +107,7 @@ const App: React.FC = () => {
     setMemories(prev => prev.filter(m => m.id !== id));
     // Limpieza profunda del estado de detalle
     setSelectedMemoryDetail(prev => (prev?.id === id ? null : prev));
+    void deleteDoc(doc(collection(db, 'memories'), id));
   }, []);
 
   const openAddModal = () => {

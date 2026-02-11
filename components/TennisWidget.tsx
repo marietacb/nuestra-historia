@@ -1,25 +1,43 @@
 
 import React, { useState, useEffect } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const TennisWidget: React.FC = () => {
-  const [record, setRecord] = useState(() => {
-    const saved = localStorage.getItem('tennis_record');
-    return saved ? parseInt(saved, 10) : 0;
-  });
+  const [record, setRecord] = useState(0);
   const [inputValue, setInputValue] = useState<string>('');
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Cargar récord de tenis desde Firestore
+  useEffect(() => {
+    const loadRecord = async () => {
+      try {
+        const ref = doc(db, 'meta', 'tennis');
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data() as { record?: number };
+          if (typeof data.record === 'number') {
+            setRecord(data.record);
+          }
+        }
+      } catch (error) {
+        console.error('Error al cargar el récord de tenis desde Firestore', error);
+      }
+    };
+
+    void loadRecord();
+  }, []);
 
   const handleUpdateRecord = () => {
     const newCount = parseInt(inputValue, 10);
     if (!isNaN(newCount)) {
-      if (newCount > record) {
-        setRecord(newCount);
-        localStorage.setItem('tennis_record', newCount.toString());
+      const isNewRecord = newCount > record;
+      setRecord(newCount);
+      void setDoc(doc(db, 'meta', 'tennis'), { record: newCount });
+
+      if (isNewRecord) {
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
-      } else {
-        setRecord(newCount);
-        localStorage.setItem('tennis_record', newCount.toString());
       }
       setInputValue('');
     }

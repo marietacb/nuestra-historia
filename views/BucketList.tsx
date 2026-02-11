@@ -1,28 +1,56 @@
 
 import React, { useState, useEffect } from 'react';
+import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { BucketItem, Category } from '../types';
+import { db } from '../firebase';
 
 interface Props {
   onConvertToAppointment: (title: string, category: Category) => void;
 }
 
 const BucketList: React.FC<Props> = ({ onConvertToAppointment }) => {
-  const [items, setItems] = useState<BucketItem[]>(() => {
-    const saved = localStorage.getItem('love_bucket');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', title: 'Viaje a Japón', description: '', isCompleted: false, category: 'Viaje' },
-      { id: '2', title: 'Curso de Baile juntos', description: '', isCompleted: false, category: 'Hito' },
-      { id: 'm1', title: 'Gladiator 2', description: '', isCompleted: false, category: 'Cine' },
-      { id: 'm2', title: 'Wicked', description: '', isCompleted: false, category: 'Cine' }
-    ];
-  });
+  const [items, setItems] = useState<BucketItem[]>([]);
 
   const [newPlan, setNewPlan] = useState('');
   const [newMovie, setNewMovie] = useState('');
 
+  // Cargar bucket list desde Firestore
   useEffect(() => {
-    localStorage.setItem('love_bucket', JSON.stringify(items));
-  }, [items]);
+    const loadBucket = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'bucket'));
+
+        if (snapshot.empty) {
+          const initialItems: BucketItem[] = [
+            { id: '1', title: 'Viaje a Japón', description: '', isCompleted: false, category: 'Viaje' },
+            { id: '2', title: 'Curso de Baile juntos', description: '', isCompleted: false, category: 'Hito' },
+            { id: 'm1', title: 'Gladiator 2', description: '', isCompleted: false, category: 'Cine' },
+            { id: 'm2', title: 'Wicked', description: '', isCompleted: false, category: 'Cine' }
+          ];
+
+          await Promise.all(
+            initialItems.map(item =>
+              setDoc(doc(collection(db, 'bucket'), item.id), item)
+            )
+          );
+          setItems(initialItems);
+        } else {
+          const loaded: BucketItem[] = snapshot.docs.map(docSnap => {
+            const data = docSnap.data() as BucketItem;
+            return {
+              ...data,
+              id: data.id ?? docSnap.id
+            };
+          });
+          setItems(loaded);
+        }
+      } catch (error) {
+        console.error('Error al cargar bucket list desde Firestore', error);
+      }
+    };
+
+    void loadBucket();
+  }, []);
 
   const addItem = (title: string, category: Category) => {
     if (!title.trim()) return;
@@ -33,27 +61,33 @@ const BucketList: React.FC<Props> = ({ onConvertToAppointment }) => {
       isCompleted: false,
       category: category
     };
-    setItems([item, ...items]);
+    setItems(prev => [item, ...prev]);
+    void setDoc(doc(collection(db, 'bucket'), item.id), item);
   };
 
   const toggleItem = (id: string) => {
-    const updatedItems = items.map(item => {
-      if (item.id === id) {
-        const nowCompleted = !item.isCompleted;
-        // Si acabamos de marcarlo como completado, disparamos la creación de cita
-        if (nowCompleted) {
-          onConvertToAppointment(item.title, item.category);
+    setItems(prevItems => {
+      const updatedItems = prevItems.map(item => {
+        if (item.id === id) {
+          const nowCompleted = !item.isCompleted;
+          const updated = { ...item, isCompleted: nowCompleted };
+          // Si acabamos de marcarlo como completado, disparamos la creación de cita
+          if (nowCompleted) {
+            onConvertToAppointment(updated.title, updated.category);
+          }
+          void setDoc(doc(collection(db, 'bucket'), updated.id), updated, { merge: true });
+          return updated;
         }
-        return { ...item, isCompleted: nowCompleted };
-      }
-      return item;
+        return item;
+      });
+      return updatedItems;
     });
-    setItems(updatedItems);
   };
 
   const deleteItem = (id: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Evita que se dispare el toggle al borrar
     setItems(prev => prev.filter(i => i.id !== id));
+    void deleteDoc(doc(collection(db, 'bucket'), id));
   };
 
   const plans = items.filter(i => i.category !== 'Cine');

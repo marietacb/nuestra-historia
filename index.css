@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.filled {
+  font-variation-settings: 'FILL' 1;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db;
+}
+
+.passport-texture {
+  background-image: radial-gradient(#d1d5db 0.5px, transparent 0.5px),
+    radial-gradient(#d1d5db 0.5px, #fdfbf7 0.5px);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+}
+
+.leather-bg {
+  background-color: #1a1a1a;
+  background-image: url("https://www.transparenttextures.com/patterns/black-leather.png");
+}
+
+.parchment-texture {
+  background-color: #fcfaf2;
+  background-image: radial-gradient(#d9d4c7 0.5px, transparent 0.5px);
+  background-size: 24px 24px;
+}
+
+.passport-spine {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.05) 0%,
+    rgba(0, 0, 0, 0.15) 50%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+}
+
+.stamp-ink {
+  mix-blend-mode: multiply;
+  opacity: 0.85;
+  transform: rotate(-3deg);
+}
+

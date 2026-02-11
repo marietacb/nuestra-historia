@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
 // Configuración de tu proyecto Firebase
@@ -14,6 +15,7 @@ const firebaseConfig = {
 
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 // Inicializar Analytics solo cuando sea compatible (navegador)
 if (typeof window !== "undefined") {
@@ -28,5 +30,5 @@ if (typeof window !== "undefined") {
     });
 }
 
-export { app };
+export { app, db };
 

@@ -5,77 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nuestra Historia</title>
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            "primary": "#ec1337",
-            "background-light": "#fffafb",
-            "surface-light": "#ffffff",
-            "accent-rose": "#fdf2f4",
-            "text-main": "#181112",
-            "text-muted": "#896168",
-            "passport-blue": "#13abec",
-          },
-          fontFamily: {
-            "display": ["Plus Jakarta Sans", "sans-serif"]
-          }
-        }
-      }
-    }
-  </script>
-  <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-    .filled { font-variation-settings: 'FILL' 1; }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
-
-    .passport-texture {
-      background-image: radial-gradient(#d1d5db 0.5px, transparent 0.5px), radial-gradient(#d1d5db 0.5px, #fdfbf7 0.5px);
-      background-size: 20px 20px;
-      background-position: 0 0, 10px 10px;
-    }
-    .leather-bg {
-      background-color: #1a1a1a;
-      background-image: url("https://www.transparenttextures.com/patterns/black-leather.png");
-    }
-    .parchment-texture {
-      background-color: #fcfaf2;
-      background-image: radial-gradient(#d9d4c7 0.5px, transparent 0.5px);
-      background-size: 24px 24px;
-    }
-    .passport-spine {
-      background: linear-gradient(90deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.05) 100%);
-    }
-    .stamp-ink {
-      mix-blend-mode: multiply;
-      opacity: 0.85;
-      transform: rotate(-3deg);
-    }
-  </style>
-<script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.13.0",
-    "recharts": "https://esm.sh/recharts@^3.7.0",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.3",
-    "@google/genai": "https://esm.sh/@google/genai@^1.40.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-background-light text-text-main">
   <div id="root"></div>
