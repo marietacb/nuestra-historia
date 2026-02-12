@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import Sidebar from './components/Sidebar';
 import Dashboard from './views/Dashboard';
 import Memories from './views/Memories';
@@ -26,12 +26,43 @@ const App: React.FC = () => {
     return sessionStorage.getItem('is_authenticated') === 'true';
   });
 
-  const [memories, setMemories] = useState<Memory[]>(INITIAL_MEMORIES);
-
-  const [userConfig, setUserConfig] = useState<SharedUser>(() => {
-    const saved = localStorage.getItem('love_user_config');
-    return saved ? JSON.parse(saved) : OUR_ACCOUNT;
+  // Recuerdos: intentamos recuperar primero de localStorage como copia local,
+  // y si no hay nada, usamos los iniciales hasta que Firestore cargue.
+  const [memories, setMemories] = useState<Memory[]>(() => {
+    if (typeof window === 'undefined') return INITIAL_MEMORIES;
+    try {
+      const saved = localStorage.getItem('love_memories');
+      return saved ? (JSON.parse(saved) as Memory[]) : INITIAL_MEMORIES;
+    } catch {
+      return INITIAL_MEMORIES;
+    }
   });
+
+  const [userConfig, setUserConfig] = useState<SharedUser>(OUR_ACCOUNT);
+
+  // Cargar configuración compartida desde Firestore
+  useEffect(() => {
+    const loadUserConfig = async () => {
+      try {
+        const configRef = doc(collection(db, 'config'), 'user');
+        const snapshot = await getDoc(configRef);
+
+        if (snapshot.exists()) {
+          setUserConfig(snapshot.data() as SharedUser);
+        } else {
+          // Sembrar configuración inicial en la BBDD
+          await setDoc(configRef, OUR_ACCOUNT);
+          setUserConfig(OUR_ACCOUNT);
+        }
+      } catch (error) {
+        console.error('Error al cargar configuración desde Firestore', error);
+        // En caso de fallo, mantenemos la configuración por defecto en memoria
+        setUserConfig(OUR_ACCOUNT);
+      }
+    };
+
+    void loadUserConfig();
+  }, []);
 
   // Cargar recuerdos desde Firestore
   useEffect(() => {
@@ -58,22 +89,54 @@ const App: React.FC = () => {
           setMemories(loaded);
         }
       } catch (error) {
-        // Si falla Firestore, al menos seguimos con los recuerdos iniciales en memoria
+        // Si falla Firestore, intentamos recuperar desde localStorage
         console.error('Error al cargar recuerdos desde Firestore', error);
+        try {
+          const saved = localStorage.getItem('love_memories');
+          if (saved) {
+            setMemories(JSON.parse(saved) as Memory[]);
+          } else {
+            setMemories(INITIAL_MEMORIES);
+          }
+        } catch {
+          setMemories(INITIAL_MEMORIES);
+        }
       }
     };
 
     void loadMemories();
   }, []);
 
+  // Guardar configuración compartida en Firestore cuando cambie
   useEffect(() => {
-    localStorage.setItem('love_user_config', JSON.stringify(userConfig));
+    const saveUserConfig = async () => {
+      try {
+        const configRef = doc(collection(db, 'config'), 'user');
+        await setDoc(configRef, userConfig, { merge: true });
+      } catch (error) {
+        console.error('Error al guardar configuración en Firestore', error);
+      }
+    };
+
+    void saveUserConfig();
   }, [userConfig]);
 
   const handleLogin = () => {
     setIsAuthenticated(true);
     sessionStorage.setItem('is_authenticated', 'true');
   };
+
+  // Mantener una copia local de los recuerdos para que no se pierdan
+  // aunque falle la conexión con Firestore.
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('love_memories', JSON.stringify(memories));
+      }
+    } catch (error) {
+      console.error('Error al guardar recuerdos en localStorage', error);
+    }
+  }, [memories]);
 
   const handleAddMemory = (newMemory: Memory) => {
     setMemories(prev => [newMemory, ...prev]);

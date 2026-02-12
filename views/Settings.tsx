@@ -1,6 +1,8 @@
 
 import React, { useRef } from 'react';
+import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { SharedUser } from '../types';
+import { db } from '../firebase';
 
 interface Props {
   userConfig: SharedUser;
@@ -10,20 +12,32 @@ interface Props {
 const Settings: React.FC<Props> = ({ userConfig, onUpdateUser }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const exportHistory = () => {
-    const memories = localStorage.getItem('love_memories');
-    const dataToExport = {
-      memories: memories ? JSON.parse(memories) : [],
-      userConfig,
-      exportedAt: new Date().toISOString()
-    };
-    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `nuestra_historia.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const exportHistory = async () => {
+    try {
+      const memoriesSnapshot = await getDocs(collection(db, 'memories'));
+      const memories = memoriesSnapshot.docs.map(docSnap => docSnap.data());
+
+      const bucketSnapshot = await getDocs(collection(db, 'bucket'));
+      const bucket = bucketSnapshot.docs.map(docSnap => docSnap.data());
+
+      const dataToExport = {
+        memories,
+        bucket,
+        userConfig,
+        exportedAt: new Date().toISOString()
+      };
+
+      const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `nuestra_historia.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error al exportar la historia', error);
+      alert('Error al exportar la historia.');
+    }
   };
 
   const importHistory = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,16 +45,53 @@ const Settings: React.FC<Props> = ({ userConfig, onUpdateUser }) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const data = JSON.parse(content);
-        if (data.memories) localStorage.setItem('love_memories', JSON.stringify(data.memories));
-        if (data.userConfig) onUpdateUser(data.userConfig);
-        alert('¡Historia importada! Recargando...');
-        window.location.reload();
-      } catch (error) {
-        alert('Error al importar.');
-      }
+      (async () => {
+        try {
+          const content = e.target?.result as string;
+          const data = JSON.parse(content);
+
+          // Restaurar recuerdos
+          if (Array.isArray(data.memories)) {
+            const memoriesRef = collection(db, 'memories');
+            const existingMemories = await getDocs(memoriesRef);
+            await Promise.all(existingMemories.docs.map(docSnap => deleteDoc(docSnap.ref)));
+
+            await Promise.all(
+              data.memories.map((m: any) => {
+                const id = m.id ?? doc(memoriesRef).id;
+                const memoryWithId = { ...m, id };
+                return setDoc(doc(memoriesRef, id), memoryWithId);
+              })
+            );
+          }
+
+          // Restaurar bucket list
+          if (Array.isArray(data.bucket)) {
+            const bucketRef = collection(db, 'bucket');
+            const existingBucket = await getDocs(bucketRef);
+            await Promise.all(existingBucket.docs.map(docSnap => deleteDoc(docSnap.ref)));
+
+            await Promise.all(
+              data.bucket.map((b: any) => {
+                const id = b.id ?? doc(bucketRef).id;
+                const bucketWithId = { ...b, id };
+                return setDoc(doc(bucketRef, id), bucketWithId);
+              })
+            );
+          }
+
+          // Restaurar configuración compartida (se guardará también en Firestore vía App.tsx)
+          if (data.userConfig) {
+            onUpdateUser(data.userConfig);
+          }
+
+          alert('¡Historia importada! Recargando...');
+          window.location.reload();
+        } catch (error) {
+          console.error('Error al importar la historia', error);
+          alert('Error al importar.');
+        }
+      })();
     };
     reader.readAsText(file);
   };
@@ -77,7 +128,7 @@ const Settings: React.FC<Props> = ({ userConfig, onUpdateUser }) => {
             Copia de Seguridad
           </h3>
           <p className="text-xs text-text-muted">Descargar la historia para guardarla en otro dispositivo.</p>
-          <button onClick={exportHistory} className="w-full p-4 bg-gray-50 rounded-2xl font-bold flex items-center justify-between hover:bg-gray-100 transition-colors border border-gray-100">
+          <button onClick={() => { void exportHistory(); }} className="w-full p-4 bg-gray-50 rounded-2xl font-bold flex items-center justify-between hover:bg-gray-100 transition-colors border border-gray-100">
             <span className="flex items-center gap-3"><span className="material-symbols-outlined text-primary">download</span>Exportar</span>
             <span className="material-symbols-outlined text-gray-300">chevron_right</span>
           </button>

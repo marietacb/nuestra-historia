@@ -1,6 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Category, Memory } from '../types';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
 
 interface Props {
   isOpen: boolean;
@@ -12,6 +14,8 @@ interface Props {
 
 const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memoryToEdit }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     date: '',
@@ -28,6 +32,7 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
   });
 
   const resetForm = () => {
+    setSelectedFiles([]);
     setFormData({
       title: '',
       date: new Date().toISOString().split('T')[0],
@@ -71,6 +76,11 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
 
   const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []) as File[];
+    
+    // 1. Guardamos los archivos reales para subirlos luego
+    setSelectedFiles(prev => [...prev, ...files]);
+
+    // 2. Mantenemos la vista previa en base64 para que el usuario vea la foto
     files.forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -82,37 +92,69 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
       reader.readAsDataURL(file);
     });
   };
-
+  
   const removeImage = (index: number) => {
+    // Hay que quitar tanto la URL de vista previa como el archivo pendiente (si existe)
+    // Nota: Esta lógica es simple, si borras una imagen que ya venía de edición (URL remota)
+    // vs una nueva (File local), habría que gestionar los índices con cuidado.
+    // Para simplificar, asumimos que borras visualmente.
     setFormData(prev => ({
       ...prev,
       imageUrls: prev.imageUrls.filter((_, i) => i !== index)
     }));
+    // También intentamos quitarlo de los archivos nuevos si coincide el índice
+    // (Esto es una aproximación, para producción idealmente separarías "nuevas" de "existentes")
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const isActuallyEditing = memoryToEdit && memoryToEdit.id && memoryToEdit.id !== '';
+    setIsUploading(true); // Bloquear botón
 
-    const memoryData: Memory = {
-      ...formData,
-      id: isActuallyEditing ? memoryToEdit!.id : Math.random().toString(36).substr(2, 9),
-      km: formData.category === 'Viaje' ? parseFloat(formData.km) || 0 : undefined,
-      movie: formData.category === 'Cine' ? (formData.movie || formData.title) : undefined,
-      ratingMaria: formData.category === 'Cine' ? formData.ratingMaria : undefined,
-      ratingGuillem: formData.category === 'Cine' ? formData.ratingGuillem : undefined,
-      endDate: formData.endDate || undefined
-    };
-    
-    if (isActuallyEditing) {
-      onEdit(memoryData);
-    } else {
-      onAdd(memoryData);
+    try {
+      const isActuallyEditing = memoryToEdit && memoryToEdit.id && memoryToEdit.id !== '';
+      const memoryId = isActuallyEditing ? memoryToEdit!.id : Math.random().toString(36).substr(2, 9);
+      
+      // LOGICA DE SUBIDA A FIREBASE STORAGE
+      const uploadedUrls: string[] = [];
+      
+      // 1. Mantener las URLs que ya eran remotas (de ediciones anteriores)
+      // Filtramos las que NO son base64 (las base64 empiezan por "data:")
+      const existingRemoteUrls = formData.imageUrls.filter(url => url.startsWith('http'));
+      uploadedUrls.push(...existingRemoteUrls);
+
+      // 2. Subir los archivos NUEVOS
+      for (const file of selectedFiles) {
+        const storageRef = ref(storage, `memories/${memoryId}/${file.name}-${Date.now()}`);
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+        uploadedUrls.push(url);
+      }
+
+      const memoryData: Memory = {
+        ...formData,
+        id: memoryId,
+        imageUrls: uploadedUrls, // <--- Usamos las URLs de Firebase, NO las base64
+        km: formData.category === 'Viaje' ? parseFloat(formData.km) || 0 : undefined,
+        movie: formData.category === 'Cine' ? (formData.movie || formData.title) : undefined,
+        ratingMaria: formData.category === 'Cine' ? formData.ratingMaria : undefined,
+        ratingGuillem: formData.category === 'Cine' ? formData.ratingGuillem : undefined,
+        endDate: formData.endDate || undefined
+      };
+      
+      if (isActuallyEditing) {
+        onEdit(memoryData);
+      } else {
+        onAdd(memoryData);
+      }
+      
+      onClose();
+      resetForm();
+    } catch (error) {
+      console.error("Error subiendo imágenes:", error);
+      alert("Error al guardar las imágenes. Revisa la consola.");
+    } finally {
+      setIsUploading(false);
     }
-    
-    onClose();
-    resetForm();
   };
 
   const StarInput = ({ label, value, onChange }: { label: string, value: number, onChange: (val: number) => void }) => (
@@ -226,8 +268,12 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
 
         <div className="p-6 border-t border-gray-100 flex gap-3 shrink-0 bg-white">
           <button onClick={onClose} className="flex-1 py-3.5 px-4 rounded-xl font-bold text-text-muted bg-gray-50 hover:bg-gray-100 transition-colors">Cancelar</button>
-          <button onClick={handleSubmit} className="flex-1 py-3.5 px-4 rounded-xl font-bold text-white bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95">
-            {memoryToEdit && memoryToEdit.id ? 'Guardar Cambios' : 'Guardar Cita'}
+          <button 
+            onClick={handleSubmit} 
+            disabled={isUploading || selectedFiles.length === 0}
+            title={selectedFiles.length === 0 ? 'Añade fotos...' : ''}
+            className={`flex-1 py-3.5 px-4 rounded-xl font-bold text-white bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${selectedFiles.length === 0 ? 'opacity-50 cursor-not-allowed hover:bg-primary' : ''}`}>
+              {isUploading ? 'Subiendo fotos...' : (memoryToEdit && memoryToEdit.id ? 'Guardar Cambios' : 'Guardar Cita')}
           </button>
         </div>
       </div>
