@@ -1,27 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../supabase';
 
 const TennisWidget: React.FC = () => {
   const [record, setRecord] = useState(0);
   const [inputValue, setInputValue] = useState<string>('');
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Cargar récord de tenis desde Firestore
   useEffect(() => {
     const loadRecord = async () => {
       try {
-        const ref = doc(db, 'meta', 'tennis');
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const data = snap.data() as { record?: number };
-          if (typeof data.record === 'number') {
-            setRecord(data.record);
-          }
+        const { data } = await supabase.from('meta').select('value').eq('key', 'tennis').single();
+        if (data?.value && typeof (data.value as { record?: number }).record === 'number') {
+          setRecord((data.value as { record: number }).record);
         }
       } catch (error) {
-        console.error('Error al cargar el récord de tenis desde Firestore', error);
+        console.error('Error al cargar el récord de tenis desde Supabase', error);
       }
     };
 
@@ -33,7 +27,7 @@ const TennisWidget: React.FC = () => {
     if (!isNaN(newCount)) {
       const isNewRecord = newCount > record;
       setRecord(newCount);
-      void setDoc(doc(db, 'meta', 'tennis'), { record: newCount });
+      void supabase.from('meta').upsert({ key: 'tennis', value: { record: newCount } });
 
       if (isNewRecord) {
         setShowSuccess(true);

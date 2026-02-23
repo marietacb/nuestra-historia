@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { BucketItem, Category } from '../types';
-import { db } from '../firebase';
+import { supabase } from '../supabase';
+import { rowToBucket, bucketToRow } from '../lib/supabase-mappers';
 
 interface Props {
   onConvertToAppointment: (title: string, category: Category) => void;
@@ -14,38 +14,29 @@ const BucketList: React.FC<Props> = ({ onConvertToAppointment }) => {
   const [newPlan, setNewPlan] = useState('');
   const [newMovie, setNewMovie] = useState('');
 
-  // Cargar bucket list desde Firestore
+  const initialBucketItems: BucketItem[] = [
+    { id: '1', title: 'Viaje a Japón', description: '', isCompleted: false, category: 'Viaje' },
+    { id: '2', title: 'Curso de Baile juntos', description: '', isCompleted: false, category: 'Hito' },
+    { id: 'm1', title: 'Gladiator 2', description: '', isCompleted: false, category: 'Cine' },
+    { id: 'm2', title: 'Wicked', description: '', isCompleted: false, category: 'Cine' }
+  ];
+
+  // Cargar bucket list desde Supabase
   useEffect(() => {
     const loadBucket = async () => {
       try {
-        const snapshot = await getDocs(collection(db, 'bucket'));
+        const { data: rows, error } = await supabase.from('bucket').select('*');
 
-        if (snapshot.empty) {
-          const initialItems: BucketItem[] = [
-            { id: '1', title: 'Viaje a Japón', description: '', isCompleted: false, category: 'Viaje' },
-            { id: '2', title: 'Curso de Baile juntos', description: '', isCompleted: false, category: 'Hito' },
-            { id: 'm1', title: 'Gladiator 2', description: '', isCompleted: false, category: 'Cine' },
-            { id: 'm2', title: 'Wicked', description: '', isCompleted: false, category: 'Cine' }
-          ];
+        if (error) throw error;
 
-          await Promise.all(
-            initialItems.map(item =>
-              setDoc(doc(collection(db, 'bucket'), item.id), item)
-            )
-          );
-          setItems(initialItems);
+        if (!rows?.length) {
+          await supabase.from('bucket').insert(initialBucketItems.map(bucketToRow));
+          setItems(initialBucketItems);
         } else {
-          const loaded: BucketItem[] = snapshot.docs.map(docSnap => {
-            const data = docSnap.data() as BucketItem;
-            return {
-              ...data,
-              id: data.id ?? docSnap.id
-            };
-          });
-          setItems(loaded);
+          setItems(rows.map(rowToBucket));
         }
       } catch (error) {
-        console.error('Error al cargar bucket list desde Firestore', error);
+        console.error('Error al cargar bucket list desde Supabase', error);
       }
     };
 
@@ -62,7 +53,7 @@ const BucketList: React.FC<Props> = ({ onConvertToAppointment }) => {
       category: category
     };
     setItems(prev => [item, ...prev]);
-    void setDoc(doc(collection(db, 'bucket'), item.id), item);
+    void supabase.from('bucket').insert(bucketToRow(item));
   };
 
   const toggleItem = (id: string) => {
@@ -71,11 +62,8 @@ const BucketList: React.FC<Props> = ({ onConvertToAppointment }) => {
         if (item.id === id) {
           const nowCompleted = !item.isCompleted;
           const updated = { ...item, isCompleted: nowCompleted };
-          // Si acabamos de marcarlo como completado, disparamos la creación de cita
-          if (nowCompleted) {
-            onConvertToAppointment(updated.title, updated.category);
-          }
-          void setDoc(doc(collection(db, 'bucket'), updated.id), updated, { merge: true });
+          if (nowCompleted) onConvertToAppointment(updated.title, updated.category);
+          void supabase.from('bucket').update({ is_completed: nowCompleted }).eq('id', id);
           return updated;
         }
         return item;
@@ -85,9 +73,9 @@ const BucketList: React.FC<Props> = ({ onConvertToAppointment }) => {
   };
 
   const deleteItem = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Evita que se dispare el toggle al borrar
+    e.stopPropagation();
     setItems(prev => prev.filter(i => i.id !== id));
-    void deleteDoc(doc(collection(db, 'bucket'), id));
+    void supabase.from('bucket').delete().eq('id', id);
   };
 
   const plans = items.filter(i => i.category !== 'Cine');

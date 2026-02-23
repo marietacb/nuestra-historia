@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { collection, doc, getDocs, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import Sidebar from './components/Sidebar';
 import Dashboard from './views/Dashboard';
 import Memories from './views/Memories';
@@ -15,7 +14,8 @@ import AddMemoryModal from './components/AddMemoryModal';
 import MemoryDetailModal from './components/MemoryDetailModal';
 import { Memory, SharedUser, Category } from './types';
 import { INITIAL_MEMORIES, OUR_ACCOUNT } from './constants';
-import { db } from './firebase';
+import { supabase } from './supabase';
+import { rowToMemory, memoryToRow } from './lib/supabase-mappers';
 
 const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -40,23 +40,20 @@ const App: React.FC = () => {
 
   const [userConfig, setUserConfig] = useState<SharedUser>(OUR_ACCOUNT);
 
-  // Cargar configuración compartida desde Firestore
+  // Cargar configuración compartida desde Supabase
   useEffect(() => {
     const loadUserConfig = async () => {
       try {
-        const configRef = doc(collection(db, 'config'), 'user');
-        const snapshot = await getDoc(configRef);
+        const { data, error } = await supabase.from('config').select('value').eq('key', 'user').single();
 
-        if (snapshot.exists()) {
-          setUserConfig(snapshot.data() as SharedUser);
+        if (!error && data?.value) {
+          setUserConfig(data.value as SharedUser);
         } else {
-          // Sembrar configuración inicial en la BBDD
-          await setDoc(configRef, OUR_ACCOUNT);
+          await supabase.from('config').upsert({ key: 'user', value: OUR_ACCOUNT });
           setUserConfig(OUR_ACCOUNT);
         }
       } catch (error) {
-        console.error('Error al cargar configuración desde Firestore', error);
-        // En caso de fallo, mantenemos la configuración por defecto en memoria
+        console.error('Error al cargar configuración desde Supabase', error);
         setUserConfig(OUR_ACCOUNT);
       }
     };
@@ -64,40 +61,26 @@ const App: React.FC = () => {
     void loadUserConfig();
   }, []);
 
-  // Cargar recuerdos desde Firestore
+  // Cargar recuerdos desde Supabase
   useEffect(() => {
     const loadMemories = async () => {
       try {
-        const snapshot = await getDocs(collection(db, 'memories'));
+        const { data: rows, error } = await supabase.from('memories').select('*');
 
-        if (snapshot.empty) {
-          // Sembrar la base de datos con los recuerdos iniciales
-          await Promise.all(
-            INITIAL_MEMORIES.map(memory =>
-              setDoc(doc(collection(db, 'memories'), memory.id), memory)
-            )
-          );
+        if (error) throw error;
+
+        if (!rows?.length) {
+          await supabase.from('memories').insert(INITIAL_MEMORIES.map(memoryToRow));
           setMemories(INITIAL_MEMORIES);
         } else {
-          const loaded: Memory[] = snapshot.docs.map(docSnap => {
-            const data = docSnap.data() as Memory;
-            return {
-              ...data,
-              id: data.id ?? docSnap.id
-            };
-          });
-          setMemories(loaded);
+          setMemories(rows.map(rowToMemory));
         }
       } catch (error) {
-        // Si falla Firestore, intentamos recuperar desde localStorage
-        console.error('Error al cargar recuerdos desde Firestore', error);
+        console.error('Error al cargar recuerdos desde Supabase', error);
         try {
           const saved = localStorage.getItem('love_memories');
-          if (saved) {
-            setMemories(JSON.parse(saved) as Memory[]);
-          } else {
-            setMemories(INITIAL_MEMORIES);
-          }
+          if (saved) setMemories(JSON.parse(saved) as Memory[]);
+          else setMemories(INITIAL_MEMORIES);
         } catch {
           setMemories(INITIAL_MEMORIES);
         }
@@ -107,14 +90,13 @@ const App: React.FC = () => {
     void loadMemories();
   }, []);
 
-  // Guardar configuración compartida en Firestore cuando cambie
+  // Guardar configuración compartida en Supabase cuando cambie
   useEffect(() => {
     const saveUserConfig = async () => {
       try {
-        const configRef = doc(collection(db, 'config'), 'user');
-        await setDoc(configRef, userConfig, { merge: true });
+        await supabase.from('config').upsert({ key: 'user', value: userConfig });
       } catch (error) {
-        console.error('Error al guardar configuración en Firestore', error);
+        console.error('Error al guardar configuración en Supabase', error);
       }
     };
 
@@ -126,8 +108,7 @@ const App: React.FC = () => {
     sessionStorage.setItem('is_authenticated', 'true');
   };
 
-  // Mantener una copia local de los recuerdos para que no se pierdan
-  // aunque falle la conexión con Firestore.
+  // Mantener una copia local de los recuerdos por si falla la conexión.
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
@@ -140,8 +121,7 @@ const App: React.FC = () => {
 
   const handleAddMemory = (newMemory: Memory) => {
     setMemories(prev => [newMemory, ...prev]);
-    // Guardar en Firestore
-    void setDoc(doc(collection(db, 'memories'), newMemory.id), newMemory);
+    void supabase.from('memories').upsert(memoryToRow(newMemory));
   };
 
   const handleEditMemory = (updatedMemory: Memory) => {
@@ -150,17 +130,14 @@ const App: React.FC = () => {
       setSelectedMemoryDetail(updatedMemory);
     }
     setEditingMemory(null);
-    // Actualizar en Firestore
-    void setDoc(doc(collection(db, 'memories'), updatedMemory.id), updatedMemory, { merge: true });
+    void supabase.from('memories').upsert(memoryToRow(updatedMemory));
   };
 
   const handleToggleFavorite = useCallback((id: string) => {
     setMemories(prev => {
       const updated = prev.map(m => m.id === id ? { ...m, isFavorite: !m.isFavorite } : m);
       const updatedMemory = updated.find(m => m.id === id);
-      if (updatedMemory) {
-        void setDoc(doc(collection(db, 'memories'), updatedMemory.id), updatedMemory, { merge: true });
-      }
+      if (updatedMemory) void supabase.from('memories').upsert(memoryToRow(updatedMemory));
       return updated;
     });
     setSelectedMemoryDetail(prev => prev && prev.id === id ? { ...prev, isFavorite: !prev.isFavorite } : prev);
@@ -168,9 +145,8 @@ const App: React.FC = () => {
 
   const handleDeleteMemory = useCallback((id: string) => {
     setMemories(prev => prev.filter(m => m.id !== id));
-    // Limpieza profunda del estado de detalle
     setSelectedMemoryDetail(prev => (prev?.id === id ? null : prev));
-    void deleteDoc(doc(collection(db, 'memories'), id));
+    void supabase.from('memories').delete().eq('id', id);
   }, []);
 
   const openAddModal = () => {

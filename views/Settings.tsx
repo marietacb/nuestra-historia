@@ -1,8 +1,8 @@
 
 import React, { useRef } from 'react';
-import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { SharedUser } from '../types';
-import { db } from '../firebase';
+import { supabase } from '../supabase';
+import { rowToMemory, memoryToRow, rowToBucket, bucketToRow } from '../lib/supabase-mappers';
 
 interface Props {
   userConfig: SharedUser;
@@ -14,11 +14,11 @@ const Settings: React.FC<Props> = ({ userConfig, onUpdateUser }) => {
 
   const exportHistory = async () => {
     try {
-      const memoriesSnapshot = await getDocs(collection(db, 'memories'));
-      const memories = memoriesSnapshot.docs.map(docSnap => docSnap.data());
+      const { data: memoryRows } = await supabase.from('memories').select('*');
+      const { data: bucketRows } = await supabase.from('bucket').select('*');
 
-      const bucketSnapshot = await getDocs(collection(db, 'bucket'));
-      const bucket = bucketSnapshot.docs.map(docSnap => docSnap.data());
+      const memories = (memoryRows ?? []).map(rowToMemory);
+      const bucket = (bucketRows ?? []).map(rowToBucket);
 
       const dataToExport = {
         memories,
@@ -50,39 +50,27 @@ const Settings: React.FC<Props> = ({ userConfig, onUpdateUser }) => {
           const content = e.target?.result as string;
           const data = JSON.parse(content);
 
-          // Restaurar recuerdos
           if (Array.isArray(data.memories)) {
-            const memoriesRef = collection(db, 'memories');
-            const existingMemories = await getDocs(memoriesRef);
-            await Promise.all(existingMemories.docs.map(docSnap => deleteDoc(docSnap.ref)));
-
-            await Promise.all(
-              data.memories.map((m: any) => {
-                const id = m.id ?? doc(memoriesRef).id;
-                const memoryWithId = { ...m, id };
-                return setDoc(doc(memoriesRef, id), memoryWithId);
-              })
-            );
+            const { data: existing } = await supabase.from('memories').select('id');
+            if (existing?.length) {
+              await supabase.from('memories').delete().in('id', existing.map(r => r.id));
+            }
+            const rows = data.memories.map((m: { id?: string }) => memoryToRow({ ...m, id: m.id ?? Math.random().toString(36).substr(2, 9) } as any));
+            if (rows.length) await supabase.from('memories').insert(rows);
           }
 
-          // Restaurar bucket list
           if (Array.isArray(data.bucket)) {
-            const bucketRef = collection(db, 'bucket');
-            const existingBucket = await getDocs(bucketRef);
-            await Promise.all(existingBucket.docs.map(docSnap => deleteDoc(docSnap.ref)));
-
-            await Promise.all(
-              data.bucket.map((b: any) => {
-                const id = b.id ?? doc(bucketRef).id;
-                const bucketWithId = { ...b, id };
-                return setDoc(doc(bucketRef, id), bucketWithId);
-              })
-            );
+            const { data: existing } = await supabase.from('bucket').select('id');
+            if (existing?.length) {
+              await supabase.from('bucket').delete().in('id', existing.map(r => r.id));
+            }
+            const rows = data.bucket.map((b: { id?: string }) => bucketToRow({ ...b, id: b.id ?? Math.random().toString(36).substr(2, 9) } as any));
+            if (rows.length) await supabase.from('bucket').insert(rows);
           }
 
-          // Restaurar configuración compartida (se guardará también en Firestore vía App.tsx)
           if (data.userConfig) {
             onUpdateUser(data.userConfig);
+            await supabase.from('config').upsert({ key: 'user', value: data.userConfig });
           }
 
           alert('¡Historia importada! Recargando...');

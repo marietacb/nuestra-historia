@@ -1,8 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Category, Memory } from '../types';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../firebase';
+import { supabase } from '../supabase';
+
+const MEMORIES_BUCKET = 'memories';
 
 interface Props {
   isOpen: boolean;
@@ -114,26 +115,22 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
       const isActuallyEditing = memoryToEdit && memoryToEdit.id && memoryToEdit.id !== '';
       const memoryId = isActuallyEditing ? memoryToEdit!.id : Math.random().toString(36).substr(2, 9);
       
-      // LOGICA DE SUBIDA A FIREBASE STORAGE
       const uploadedUrls: string[] = [];
-      
-      // 1. Mantener las URLs que ya eran remotas (de ediciones anteriores)
-      // Filtramos las que NO son base64 (las base64 empiezan por "data:")
       const existingRemoteUrls = formData.imageUrls.filter(url => url.startsWith('http'));
       uploadedUrls.push(...existingRemoteUrls);
 
-      // 2. Subir los archivos NUEVOS
       for (const file of selectedFiles) {
-        const storageRef = ref(storage, `memories/${memoryId}/${file.name}-${Date.now()}`);
-        await uploadBytes(storageRef, file);
-        const url = await getDownloadURL(storageRef);
-        uploadedUrls.push(url);
+        const path = `${memoryId}/${file.name}-${Date.now()}`;
+        const { error: uploadError } = await supabase.storage.from(MEMORIES_BUCKET).upload(path, file, { upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from(MEMORIES_BUCKET).getPublicUrl(path);
+        uploadedUrls.push(urlData.publicUrl);
       }
 
       const memoryData: Memory = {
         ...formData,
         id: memoryId,
-        imageUrls: uploadedUrls, // <--- Usamos las URLs de Firebase, NO las base64
+        imageUrls: uploadedUrls,
         km: formData.category === 'Viaje' ? parseFloat(formData.km) || 0 : undefined,
         movie: formData.category === 'Cine' ? (formData.movie || formData.title) : undefined,
         ratingMaria: formData.category === 'Cine' ? formData.ratingMaria : undefined,
@@ -270,9 +267,9 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
           <button onClick={onClose} className="flex-1 py-3.5 px-4 rounded-xl font-bold text-text-muted bg-gray-50 hover:bg-gray-100 transition-colors">Cancelar</button>
           <button 
             onClick={handleSubmit} 
-            disabled={isUploading || selectedFiles.length === 0}
-            title={selectedFiles.length === 0 ? 'Añade fotos...' : ''}
-            className={`flex-1 py-3.5 px-4 rounded-xl font-bold text-white bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${selectedFiles.length === 0 ? 'opacity-50 cursor-not-allowed hover:bg-primary' : ''}`}>
+            disabled={isUploading || (selectedFiles.length === 0 && !formData.imageUrls.some(u => u.startsWith('http')))}
+            title={selectedFiles.length === 0 && !formData.imageUrls.some(u => u.startsWith('http')) ? 'Añade al menos una foto' : ''}
+            className={`flex-1 py-3.5 px-4 rounded-xl font-bold text-white bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${selectedFiles.length === 0 && !formData.imageUrls.some(u => u.startsWith('http')) ? 'opacity-50 cursor-not-allowed hover:bg-primary' : ''}`}>
               {isUploading ? 'Subiendo fotos...' : (memoryToEdit && memoryToEdit.id ? 'Guardar Cambios' : 'Guardar Cita')}
           </button>
         </div>
