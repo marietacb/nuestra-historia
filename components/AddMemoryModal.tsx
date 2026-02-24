@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Category, Memory } from '../types';
 import { supabase } from '../supabase';
+import { memoryToRow } from '../lib/supabase-mappers';
 
 const MEMORIES_BUCKET = 'memories';
 
@@ -137,18 +138,21 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
         ratingGuillem: formData.category === 'Cine' ? formData.ratingGuillem : undefined,
         endDate: formData.endDate || undefined
       };
-      
+
+      const { error: dbError } = await supabase.from('memories').upsert(memoryToRow(memoryData));
+      if (dbError) throw dbError;
+
       if (isActuallyEditing) {
         onEdit(memoryData);
       } else {
         onAdd(memoryData);
       }
-      
+
       onClose();
       resetForm();
     } catch (error) {
-      console.error("Error subiendo imágenes:", error);
-      alert("Error al guardar las imágenes. Revisa la consola.");
+      console.error('Error al guardar la cita:', error);
+      alert('Error al guardar la cita en la base de datos. Revisa la consola.');
     } finally {
       setIsUploading(false);
     }

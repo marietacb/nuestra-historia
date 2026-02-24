@@ -80,3 +80,9 @@ npm run dev
 ```
 
 Abre la app en el navegador; los datos se guardarán en Supabase y las fotos en el bucket `memories`.
+
+---
+
+## 7. Acceder desde cualquier sitio y ver lo mismo en todos los dispositivos
+
+Las citas y el resto de datos están en Supabase, no solo en tu ordenador. Para poder abrir la app desde el móvil, otro PC o cualquier sitio, y que lo que guardes en un dispositivo aparezca en el otro, tienes que **desplegar la app** en internet (por ejemplo en Vercel). Instrucciones paso a paso en **[DEPLOY.md](DEPLOY.md)**.
