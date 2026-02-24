@@ -52,8 +52,8 @@ with check ( bucket_id = 'memories' );
 
 1. **Project Settings** (icono de engranaje) → **API**.
 2. Copia:
-   - **Project URL** (algo como `https://xxxxx.supabase.co`).
-   - **anon public** (clave larga bajo "Project API keys").
+   - **Project URL** (algo como `https://xxxxx.supabase.co`). https://vginqtxwxewaavnyvgah.supabase.co
+   - **anon public** (clave larga bajo "Project API keys"). sb_publishable_73WpgF0jxpbIBAwlnXqQRQ_hCRbQTvl
 
 ---
 
