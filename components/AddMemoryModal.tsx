@@ -184,7 +184,7 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
+        <form id="add-memory-form" onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
           {/* Fotos */}
           <div className="space-y-3">
             <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest ml-1">Nuestras fotos</label>
@@ -266,10 +266,10 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
         <div className="p-6 border-t border-gray-100 flex gap-3 shrink-0 bg-white">
           <button onClick={onClose} className="flex-1 py-3.5 px-4 rounded-xl font-bold text-text-muted bg-gray-50 hover:bg-gray-100 transition-colors">Cancelar</button>
           <button 
-            onClick={handleSubmit} 
-            disabled={isUploading || (selectedFiles.length === 0 && !formData.imageUrls.some(u => u.startsWith('http')))}
-            title={selectedFiles.length === 0 && !formData.imageUrls.some(u => u.startsWith('http')) ? 'Añade al menos una foto' : ''}
-            className={`flex-1 py-3.5 px-4 rounded-xl font-bold text-white bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${selectedFiles.length === 0 && !formData.imageUrls.some(u => u.startsWith('http')) ? 'opacity-50 cursor-not-allowed hover:bg-primary' : ''}`}>
+            type="submit"
+            form="add-memory-form"
+            disabled={isUploading}
+            className="flex-1 py-3.5 px-4 rounded-xl font-bold text-white bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
               {isUploading ? 'Subiendo fotos...' : (memoryToEdit && memoryToEdit.id ? 'Guardar Cambios' : 'Guardar Cita')}
           </button>
         </div>
