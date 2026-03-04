@@ -27,7 +27,7 @@ const App: React.FC = () => {
   });
 
   // Recuerdos: intentamos recuperar primero de localStorage como copia local,
-  // y si no hay nada, usamos los iniciales hasta que Firestore cargue.
+  // y si no hay nada
   const [memories, setMemories] = useState<Memory[]>(() => {
     if (typeof window === 'undefined') return INITIAL_MEMORIES;
     try {
@@ -143,10 +143,27 @@ const App: React.FC = () => {
     setSelectedMemoryDetail(prev => prev && prev.id === id ? { ...prev, isFavorite: !prev.isFavorite } : prev);
   }, []);
 
-  const handleDeleteMemory = useCallback((id: string) => {
-    setMemories(prev => prev.filter(m => m.id !== id));
+  const handleDeleteMemory = useCallback(async(id: string) => {
+    setMemories(prev => {
+      const updated = prev.filter(m => m.id !== id);
+
+      try {
+        if (typeof window !== 'undefined'){
+          localStorage.setItem('love_memories', JSON.stringify(updated));
+        }
+      } catch (error) {
+        console.error('Error al guardar recuerdos en localStorage', error);
+      }
+      return updated;
+    });
     setSelectedMemoryDetail(prev => (prev?.id === id ? null : prev));
-    void supabase.from('memories').delete().eq('id', id);
+
+    const { error } = await supabase.from('memories').delete().eq('id', id);
+
+    if  (error) {
+      console.error('Error al borrar recuerdo en Supabase', error);
+      alert('Error al borrar recuerdo. Por favor, inténtalo de nuevo.');
+    }
   }, []);
 
   const openAddModal = () => {
