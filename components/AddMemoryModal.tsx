@@ -140,10 +140,23 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
       uploadedUrls.push(...existingRemoteUrls);
 
       for (const file of selectedFiles) {
-        const path = `${memoryId}/${file.name}-${Date.now()}`;
-        const { error: uploadError } = await supabase.storage.from(MEMORIES_BUCKET).upload(path, file, { upsert: false });
+        const ext = file.name.includes('.') ? file.name.split('.').pop() : 'bin';
+        const safeBase = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        const safeName = ext ? `${safeBase}.${ext}` : safeBase;
+        const path = `${memoryId}/${safeName}`;
+
+        const { error: uploadError } = await supabase
+          .storage
+          .from(MEMORIES_BUCKET)
+          .upload(path, file, { upsert: false });
+
         if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from(MEMORIES_BUCKET).getPublicUrl(path);
+
+        const { data: urlData } = supabase
+          .storage
+          .from(MEMORIES_BUCKET)
+          .getPublicUrl(path);
+
         uploadedUrls.push(urlData.publicUrl);
       }
 
