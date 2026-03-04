@@ -1,5 +1,18 @@
 
-export type Category = 'Viaje' | 'Comida' | 'Cine' | 'Hito' | 'Tometa';
+export type Category =
+  | 'Viaje'
+  | 'Comida'
+  | 'Cine'
+  | 'Hito'
+  | 'Tometa'
+  | 'Cumpleaños'
+  | 'Plan espontáneo'
+  | 'Tarde con amigos'
+  | 'Sorpresa'
+  | 'Fiesta'
+  | 'Plan Casero'
+  | 'Deporte'
+  | 'Libro';
 
 export interface Memory {
   id: string;

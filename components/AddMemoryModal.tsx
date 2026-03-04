@@ -23,6 +23,7 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
     date: '',
     endDate: '',
     location: '',
+    locations: [] as string[],
     category: 'Viaje' as Category,
     description: '',
     imageUrls: [] as string[],
@@ -40,6 +41,7 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
       date: new Date().toISOString().split('T')[0],
       endDate: '',
       location: '',
+      locations: [],
       category: 'Viaje',
       description: '',
       imageUrls: [],
@@ -54,11 +56,18 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
   useEffect(() => {
     if (isOpen) {
       if (memoryToEdit) {
+        const isTravel = memoryToEdit.category === 'Viaje';
+        const parsedLocations =
+          isTravel && memoryToEdit.location
+            ? memoryToEdit.location.split(' | ').map(part => part.trim()).filter(Boolean)
+            : [];
+
         setFormData({
           title: memoryToEdit.title || '',
           date: memoryToEdit.date || new Date().toISOString().split('T')[0],
           endDate: memoryToEdit.endDate || '',
           location: memoryToEdit.location || '',
+          locations: parsedLocations,
           category: memoryToEdit.category || 'Viaje',
           description: memoryToEdit.description || '',
           imageUrls: memoryToEdit.imageUrls ? [...memoryToEdit.imageUrls] : [],
@@ -110,6 +119,16 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validación básica para viajes: al menos un lugar
+    if (formData.category === 'Viaje') {
+      const hasLocations = formData.locations && formData.locations.length > 0;
+      if (!hasLocations) {
+        alert('Para un viaje, añade al menos un lugar.');
+        return;
+      }
+    }
+
     setIsUploading(true); // Bloquear botón
 
     try {
@@ -231,17 +250,62 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5 ml-1">Lugar</label>
-                <input required className="w-full px-4 py-3 rounded-xl border border-gray-100 outline-none text-sm" placeholder="Dónde..." value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} />
+                {formData.category === 'Viaje' ? (
+                  <>
+                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5 ml-1">
+                      Lugares (uno por línea)
+                    </label>
+                    <textarea
+                      required
+                      className="w-full px-4 py-3 rounded-xl border border-gray-100 outline-none text-sm resize-none h-24"
+                      placeholder="Ej:&#10;Roma, Italia&#10;Florencia, Italia"
+                      value={formData.locations.join('\n')}
+                      onChange={e => {
+                        const lines = e.target.value
+                          .split('\n')
+                          .map(line => line.trim())
+                          .filter(Boolean);
+                        setFormData({
+                          ...formData,
+                          locations: lines,
+                          location: lines.join(' | ')
+                        });
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5 ml-1">Lugar</label>
+                    <input
+                      required
+                      className="w-full px-4 py-3 rounded-xl border border-gray-100 outline-none text-sm"
+                      placeholder="Dónde..."
+                      value={formData.location}
+                      onChange={e => setFormData({ ...formData, location: e.target.value })}
+                    />
+                  </>
+                )}
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5 ml-1">Categoría</label>
-                <select className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none bg-white text-sm" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as Category})}>
+                <select
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none bg-white text-sm"
+                  value={formData.category}
+                  onChange={e => setFormData({ ...formData, category: e.target.value as Category })}
+                >
                   <option value="Viaje">✈️ Viaje</option>
                   <option value="Comida">🥘 Comida</option>
                   <option value="Cine">🍿 Cine</option>
                   <option value="Hito">✨ Hito Especial</option>
                   <option value="Tometa">🍸 Tometa</option>
+                  <option value="Cumpleaños">🎂 Cumpleaños</option>
+                  <option value="Plan espontáneo">⚡ Plan espontáneo</option>
+                  <option value="Tarde con amigos">👯‍♀️ Tarde con amigos</option>
+                  <option value="Sorpresa">🎁 Sorpresa</option>
+                  <option value="Fiesta">🎉 Fiesta</option>
+                  <option value="Plan Casero">🏡 Plan casero</option>
+                  <option value="Deporte">💪 Deporte</option>
+                  <option value="Libro">📚 Libro</option>
                 </select>
               </div>
             </div>

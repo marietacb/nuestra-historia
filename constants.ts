@@ -105,4 +105,12 @@ export const CATEGORY_COLORS: Record<string, string> = {
   'Cine': '#a855f7',
   'Hito': '#eab308',
   'Tometa': '#ef4444',
+  'Cumpleaños': '#f472b6',
+  'Plan espontáneo': '#22c55e',
+  'Tarde con amigos': '#0ea5e9',
+  'Sorpresa': '#6366f1',
+  'Fiesta': '#ec4899',
+  'Plan Casero': '#6b7280',
+  'Deporte': '#16a34a',
+  'Libro': '#7c3aed',
 };
