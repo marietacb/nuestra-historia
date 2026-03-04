@@ -113,4 +113,5 @@ export const CATEGORY_COLORS: Record<string, string> = {
   'Plan Casero': '#6b7280',
   'Deporte': '#16a34a',
   'Libro': '#7c3aed',
+  'Amor': '#fb7185',
 };

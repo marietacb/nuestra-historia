@@ -306,6 +306,7 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
                   <option value="Plan Casero">🏡 Plan casero</option>
                   <option value="Deporte">💪 Deporte</option>
                   <option value="Libro">📚 Libro</option>
+                  <option value="Amor">💕 Amor</option>
                 </select>
               </div>
             </div>

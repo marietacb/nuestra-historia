@@ -12,7 +12,8 @@ export type Category =
   | 'Fiesta'
   | 'Plan Casero'
   | 'Deporte'
-  | 'Libro';
+  | 'Libro'
+  | 'Amor';
 
 export interface Memory {
   id: string;
