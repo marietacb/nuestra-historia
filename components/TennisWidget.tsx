@@ -3,16 +3,40 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 
 const TennisWidget: React.FC = () => {
-  const [record, setRecord] = useState(0);
+  const [record, setRecord] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    try {
+      const saved = localStorage.getItem('tennis_record');
+      const parsed = saved ? parseInt(saved, 10) : 0;
+      return Number.isNaN(parsed) ? 0 : parsed;
+    } catch {
+      return 0;
+    }
+  });
   const [inputValue, setInputValue] = useState<string>('');
   const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     const loadRecord = async () => {
       try {
-        const { data } = await supabase.from('meta').select('value').eq('key', 'tennis').single();
+        const { data, error } = await supabase.from('meta').select('value').eq('key', 'tennis').single();
+
+        if (error) {
+          // Si falla Supabase, al menos mantenemos el valor local
+          console.error('Error al cargar el récord de tenis desde Supabase', error);
+          return;
+        }
+
         if (data?.value && typeof (data.value as { record?: number }).record === 'number') {
-          setRecord((data.value as { record: number }).record);
+          const value = (data.value as { record: number }).record;
+          setRecord(value);
+          try {
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('tennis_record', String(value));
+            }
+          } catch {
+            // ignorar errores de localStorage
+          }
         }
       } catch (error) {
         console.error('Error al cargar el récord de tenis desde Supabase', error);
@@ -27,7 +51,22 @@ const TennisWidget: React.FC = () => {
     if (!isNaN(newCount)) {
       const isNewRecord = newCount > record;
       setRecord(newCount);
-      void supabase.from('meta').upsert({ key: 'tennis', value: { record: newCount } });
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('tennis_record', String(newCount));
+        }
+      } catch {
+        // ignorar errores de localStorage
+      }
+
+      void supabase
+        .from('meta')
+        .upsert({ key: 'tennis', value: { record: newCount } })
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error al guardar el récord de tenis en Supabase', error);
+          }
+        });
 
       if (isNewRecord) {
         setShowSuccess(true);
