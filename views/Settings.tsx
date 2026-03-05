@@ -1,8 +1,12 @@
-
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { SharedUser } from '../types';
 import { supabase } from '../supabase';
 import { rowToMemory, memoryToRow, rowToBucket, bucketToRow } from '../lib/supabase-mappers';
+import {
+  ALL_CATEGORY_FILTERS,
+  getVisibleFilterCategories,
+  setVisibleFilterCategories,
+} from '../lib/filter-config';
 
 interface Props {
   userConfig: SharedUser;
@@ -11,6 +15,26 @@ interface Props {
 
 const Settings: React.FC<Props> = ({ userConfig, onUpdateUser }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [visibleFilters, setVisibleFilters] = useState<Set<string>>(() => {
+    return new Set(getVisibleFilterCategories());
+  });
+
+  useEffect(() => {
+    setVisibleFilterCategories(Array.from(visibleFilters));
+  }, [visibleFilters]);
+
+  const toggleFilter = (label: string) => {
+    setVisibleFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
+
+  const restoreAllFilters = () => {
+    setVisibleFilters(new Set(ALL_CATEGORY_FILTERS.map(f => f.label)));
+  };
 
   const exportHistory = async () => {
     try {
@@ -125,6 +149,43 @@ const Settings: React.FC<Props> = ({ userConfig, onUpdateUser }) => {
             <span className="material-symbols-outlined text-gray-300">chevron_right</span>
           </button>
           <input type="file" ref={fileInputRef} onChange={importHistory} className="hidden" accept=".json" />
+        </section>
+
+        <section className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 md:col-span-2 space-y-4">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary">filter_list</span>
+            Filtros en Nuestras Citas
+          </h3>
+          <p className="text-sm text-text-muted">
+            Elige qué categorías quieres que aparezcan en la barra de filtros. Si no personalizas, se muestran todas.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {ALL_CATEGORY_FILTERS.map((f) => (
+              <label
+                key={f.label}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 cursor-pointer transition-all border ${
+                  visibleFilters.has(f.label)
+                    ? 'bg-primary/10 border-primary/30 text-primary'
+                    : 'bg-gray-50 border-gray-100 text-gray-500'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={visibleFilters.has(f.label)}
+                  onChange={() => toggleFilter(f.label)}
+                  className="sr-only"
+                />
+                <span className={`material-symbols-outlined text-lg ${f.color}`}>{f.icon}</span>
+                <span className="text-sm font-semibold">{f.label}</span>
+              </label>
+            ))}
+          </div>
+          <button
+            onClick={restoreAllFilters}
+            className="text-sm font-bold text-primary hover:underline"
+          >
+            Mostrar todas las categorías
+          </button>
         </section>
 
         <section className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 md:col-span-2 flex flex-col md:flex-row items-center justify-between gap-4">
