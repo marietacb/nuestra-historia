@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
 import { Memory } from '../types';
+import { CATEGORY_COLORS } from '../constants';
 
 interface MemoryCardProps {
   memory: Memory;
@@ -11,17 +11,6 @@ interface MemoryCardProps {
 const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onClick, onDelete }) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-  const getCategoryColor = (category: Memory['category']) => {
-    switch (category) {
-      case 'Viaje': return 'text-blue-600';
-      case 'Comida': return 'text-orange-600';
-      case 'Cine': return 'text-purple-600';
-      case 'Hito': return 'text-yellow-600';
-      case 'Tometa': return 'text-red-500';
-      default: return 'text-gray-600';
-    }
-  };
-
   const getCategoryIcon = (category: Memory['category']) => {
     switch (category) {
       case 'Viaje': return 'flight_takeoff';
@@ -29,9 +18,20 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onClick, onDelete }) =>
       case 'Cine': return 'movie';
       case 'Hito': return 'celebration';
       case 'Tometa': return 'local_bar';
+      case 'Cumpleaños': return 'cake';
+      case 'Plan espontáneo': return 'bolt';
+      case 'Tarde con amigos': return 'group';
+      case 'Sorpresa': return 'card_giftcard';
+      case 'Fiesta': return 'celebration';
+      case 'Plan Casero': return 'home';
+      case 'Deporte': return 'fitness_center';
+      case 'Libro': return 'menu_book';
+      case 'Amor': return 'favorite';
       default: return 'favorite';
     }
   };
+
+  const categoryBgColor = CATEGORY_COLORS[memory.category] || '#ec1337';
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
@@ -104,7 +104,10 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onClick, onDelete }) =>
               </div>
             )
           )}
-          <span className={`inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-bold ${getCategoryColor(memory.category)} shadow-sm backdrop-blur-sm`}>
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-white shadow-sm backdrop-blur-sm"
+            style={{ backgroundColor: categoryBgColor }}
+          >
             <span className="material-symbols-outlined text-[14px]">{getCategoryIcon(memory.category)}</span>
             {memory.category}
           </span>
