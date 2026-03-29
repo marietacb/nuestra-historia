@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Category, Memory } from '../types';
-import { isSupabaseConfigured, supabase } from '../supabase';
+import { isLikelyWrongSupabaseHost, isSupabaseConfigured, supabase } from '../supabase';
 import { memoryToRow } from '../lib/supabase-mappers';
 
 const MEMORIES_BUCKET = 'memories';
@@ -135,6 +135,14 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
       setIsUploading(false);
       alert(
         'No hay conexión a Supabase: faltan VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY en el despliegue (Vercel → Settings → Environment Variables). Tras añadirlas, vuelve a desplegar el proyecto porque Vite las incrusta al compilar.'
+      );
+      return;
+    }
+
+    if (isLikelyWrongSupabaseHost()) {
+      setIsUploading(false);
+      alert(
+        'La URL de Supabase está mal configurada: debe ser la Project URL que termina en .supabase.co (por ejemplo https://abcdefgh.supabase.co). Si en Vercel pusiste algo como https://abcdefgh.co, falta ".supabase" en el dominio; cópiala entera desde Supabase → Project Settings → API.'
       );
       return;
     }
