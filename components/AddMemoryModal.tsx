@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Category, Memory } from '../types';
-import { supabase } from '../supabase';
+import { isSupabaseConfigured, supabase } from '../supabase';
 import { memoryToRow } from '../lib/supabase-mappers';
 
 const MEMORIES_BUCKET = 'memories';
@@ -130,6 +130,14 @@ const AddMemoryModal: React.FC<Props> = ({ isOpen, onClose, onAdd, onEdit, memor
     }
 
     setIsUploading(true); // Bloquear botón
+
+    if (!isSupabaseConfigured) {
+      setIsUploading(false);
+      alert(
+        'No hay conexión a Supabase: faltan VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY en el despliegue (Vercel → Settings → Environment Variables). Tras añadirlas, vuelve a desplegar el proyecto porque Vite las incrusta al compilar.'
+      );
+      return;
+    }
 
     try {
       const isActuallyEditing = memoryToEdit && memoryToEdit.id && memoryToEdit.id !== '';
