@@ -3,6 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
 
+// createClient lanza si la URL está vacía y deja la pantalla en blanco.
+// Sin variables, la app sigue usable con la copia local.
+
 /** En producción, si faltan VITE_* en el build de Vercel, las peticiones a Supabase fallan con "Failed to fetch". */
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
@@ -20,4 +23,7 @@ export function isLikelyWrongSupabaseHost(): boolean {
   }
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'missing-anon-key',
+);

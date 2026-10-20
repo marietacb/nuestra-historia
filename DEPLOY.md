@@ -38,3 +38,5 @@ Sin estas variables, la app no podrá conectar con Supabase y no verás ni guard
 - Por tanto: lo que guardes en un ordenador aparecerá en el otro, en el móvil, etc., porque todos leen y escriben en Supabase.
 
 No hace falta instalar nada en cada dispositivo: solo abre la URL de la app en el navegador.
+
+En un iPhone también puedes dejarla como icono en la pantalla de inicio, o instalar el proyecto de Xcode con una cuenta de Apple gratuita. Los pasos están en [IOS.md](IOS.md).
