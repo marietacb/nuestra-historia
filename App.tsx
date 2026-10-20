@@ -12,13 +12,13 @@ import Settings from './views/Settings';
 import Login from './views/Login';
 import AddMemoryModal from './components/AddMemoryModal';
 import MemoryDetailModal from './components/MemoryDetailModal';
+import MobileTabBar from './components/MobileTabBar';
 import { Memory, SharedUser, Category } from './types';
 import { INITIAL_MEMORIES, OUR_ACCOUNT } from './constants';
 import { supabase } from './supabase';
 import { rowToMemory, memoryToRow } from './lib/supabase-mappers';
 
 const App: React.FC = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingMemory, setEditingMemory] = useState<Memory | null>(null);
   const [selectedMemoryDetail, setSelectedMemoryDetail] = useState<Memory | null>(null);
@@ -196,28 +196,12 @@ const App: React.FC = () => {
 
   return (
     <Router>
-      <div className="flex h-screen w-full overflow-hidden bg-background-light font-display antialiased">
+      <div className="flex h-[100dvh] w-full overflow-hidden bg-background-light font-display antialiased">
         <Sidebar currentUser={userConfig} onAddClick={openAddModal} />
 
-        <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-surface-light border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">favorite</span>
-            <h1 className="text-text-main text-lg font-bold">Nuestra Historia</h1>
-          </div>
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-text-main">
-            <span className="material-symbols-outlined">menu</span>
-          </button>
-        </div>
-
-        {isMobileMenuOpen && (
-          <div className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}>
-            <div className="w-72 h-full bg-white p-6" onClick={e => e.stopPropagation()}>
-              <Sidebar currentUser={userConfig} onAddClick={() => { openAddModal(); setIsMobileMenuOpen(false); }} />
-            </div>
-          </div>
-        )}
-
-        <main className="flex-1 h-full overflow-y-auto overflow-x-hidden pt-16 md:pt-0">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="md:hidden h-[env(safe-area-inset-top)] shrink-0 bg-background-light" />
+          <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
           <Routes>
             <Route path="/" element={<Dashboard memories={memories} userConfig={userConfig} onViewMemory={setSelectedMemoryDetail} />} />
             <Route path="/memories" element={<Memories memories={memories} onAddClick={openAddModal} onDelete={handleDeleteMemory} onViewMemory={setSelectedMemoryDetail} />} />
@@ -228,8 +212,10 @@ const App: React.FC = () => {
             <Route path="/settings" element={<Settings userConfig={userConfig} onUpdateUser={setUserConfig} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </main>
-        
+          </main>
+          <MobileTabBar onAddClick={openAddModal} />
+        </div>
+
         <AddMemoryModal 
           isOpen={isAddModalOpen} 
           onClose={() => { setIsAddModalOpen(false); setEditingMemory(null); }} 

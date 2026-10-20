@@ -2,8 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
+body,
+#root {
+  height: 100%;
+  background: #fffafb;
+}
+
 body {
+  margin: 0;
   font-family: 'Plus Jakarta Sans', sans-serif;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 .material-symbols-outlined {

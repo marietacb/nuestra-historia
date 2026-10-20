@@ -15,6 +15,11 @@ Hola Daniel:-) Te pongo aquí la info de como va ahora
 5. Abre el enlace que aparecerá (normalmente `http://localhost:5173`).
 
 Ahora mismo se compartiria asi con guille
+
+## En el iPhone
+
+Se puede instalar gratis desde Safari o, con un Mac, como app nativa. Los pasos están en [IOS.md](IOS.md).
+
 ## Despliegue
 
 Para que Guille pueda entrar desde su propio portátil en su casa:

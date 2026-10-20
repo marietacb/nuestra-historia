@@ -13,6 +13,14 @@ dist-ssr
 *.local
 .env
 
+# iOS / Capacitor (el proyecto Xcode sí se versiona; esto es caché local)
+ios/App/Pods/
+ios/App/build/
+ios/App/App/public/
+ios/DerivedData/
+*.xcuserstate
+xcuserdata/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -21,7 +21,7 @@ const Login: React.FC<Props> = ({ onLogin }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background-light p-6">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background-light px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="w-full max-w-md text-center space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
         <div className="space-y-4">
           <div className="inline-flex size-24 items-center justify-center rounded-full bg-primary/10 text-primary shadow-inner">
